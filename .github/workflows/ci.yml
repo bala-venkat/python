@@ -1,0 +1,47 @@
+name: Pact Contract Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  pact-verification:
+    name: Pact Contract Verification
+    runs-on: [self-hosted, Linux]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Verify environment
+        run: |
+          python3 --version
+          uname -m
+          cat /etc/os-release
+
+      - name: Install Pact CLI (official installer)
+        run: |
+          curl using curl -fsSL https://raw.githubusercontent.com/pact-foundation/pact-standalone/master/install.sh | PACT_CLI_VERSION=v2.5.9 bash
+          echo "$HOME/pact/bin" >> $GITHUB_PATH
+
+      - name: Verify Pact CLI
+        run: |
+          pact-broker version
+          pact-verifier --version
+
+      - name: Install Python dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install -r pact/requirements.txt
+
+      - name: Run Pact Broker Verification
+        env:
+          GIT_COMMIT: ${{ github.sha }}
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          pact-broker verify \
+            --broker-base-url https://<PACT_BROKER_URL> \
+            --provider <PROVIDER_NAME> \
+            --provider-version $GIT_COMMIT
